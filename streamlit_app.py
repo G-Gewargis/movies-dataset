@@ -1,66 +1,55 @@
 import altair as alt
 import pandas as pd
 import streamlit as st
+import requests 
+
 
 # Show the page title and description.
-st.set_page_config(page_title="Movies dataset", page_icon="🎬")
-st.title("🎬 Movies dataset")
-st.write(
-    """
-    This app visualizes data from [The Movie Database (TMDB)](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata).
-    It shows which movie genre performed best at the box office over the years. Just 
-    click on the widgets below to explore!
-    """
-)
+st.set_page_config(page_title="Food", page_icon="🎬")
+st.title("FOOD")
+import requests
+
+API_KEY = 'n8DXzZmNroJ4Wew6OkGKwoubDTdsee7VlSPY5huK'
+def format_number(value):
+    if value is not None:
+        formatted = f"{value:.10f}"
+        return f"{formatted.rstrip('0').rstrip('.')}"
+    else:
+        value = '0'
+        return value
+
+url = "https://vision.foodvisor.io/api/1.0/en/analysis/"
+headers = {"Authorization": "Api-Key t0tXlgF3.lJFuSecTKimVxvGYqlgIPULTfzV1QyAz"}
+with open("food.jpg", "rb") as image:
+  response = requests.post(url, headers=headers, files={"image": image})
+  response.raise_for_status()
+data = response.json()
+
+display_name = data["items"][0]["food"][0]["food_info"]["display_name"]
+nutrition = data["items"][0]["food"][0]["food_info"]["nutrition"]
+
+st.image('food.jpg', caption='Uploaded Food Image', use_column_width=True)
+
+with st.expander("Nutritional Information"):
+    st.write("**Serving Size:** 100 g")
+    st.write(f"**Calories:** {format_number(nutrition['calories_100g'])} kcal")
+    st.write(f"**Total Fat:** {format_number(nutrition['fat_100g'])} g")
+    st.write(f"  - **Saturated Fat:** {format_number(nutrition['sat_fat_100g'])} g")
+    st.write(f"  - **Trans Fat:** {format_number(nutrition['sugars_100g'])} g")
+    st.write(f"**Cholesterol:** {format_number(nutrition['cholesterol_100g'])} mg")
+    st.write(f"**Sodium:** {format_number(nutrition['sodium_100g'])} mg")
+    st.write(f"**Total Carbohydrates:** {format_number(nutrition['carbs_100g'])} g")
+    st.write(f"  - **Dietary Fiber:** {format_number(nutrition['fibers_100g'])} g")
+    st.write(f"  - **Total Sugars:** {format_number(nutrition['sugars_100g'])} g")
+    st.write(f"**Protein:** {format_number(nutrition['proteins_100g'])} g")
+    if st.checkbox("Expand to see Vitamins"):
+        st.write(f"**Vitamin A:** {format_number(nutrition['vitamin_a_retinol_100g'])} µg")
+        st.write(f"**Vitamin C:** {format_number(nutrition['vitamin_c_100g'])} mg")
+        st.write(f"**Vitamin D:** {format_number(nutrition['vitamin_d_100g'])} µg")
+        st.write(f"**Vitamin B12:** {format_number(nutrition['vitamin_b12_100g'])} µg")
+    if st.checkbox("Expand to see Minerals"):
+        st.write(f"**Calcium:** {format_number(nutrition['calcium_100g'])} mg")
+        st.write(f"**Iron:** {format_number(nutrition['iron_100g'])} mg")
+        st.write(f"**Potassium:** {format_number(nutrition['potassium_100g'])} mg")
 
 
-# Load the data from a CSV. We're caching this so it doesn't reload every time the app
-# reruns (e.g. if the user interacts with the widgets).
-@st.cache_data
-def load_data():
-    df = pd.read_csv("data/movies_genres_summary.csv")
-    return df
-
-
-df = load_data()
-
-# Show a multiselect widget with the genres using `st.multiselect`.
-genres = st.multiselect(
-    "Genres",
-    df.genre.unique(),
-    ["Action", "Adventure", "Biography", "Comedy", "Drama", "Horror"],
-)
-
-# Show a slider widget with the years using `st.slider`.
-years = st.slider("Years", 1986, 2006, (2000, 2016))
-
-# Filter the dataframe based on the widget input and reshape it.
-df_filtered = df[(df["genre"].isin(genres)) & (df["year"].between(years[0], years[1]))]
-df_reshaped = df_filtered.pivot_table(
-    index="year", columns="genre", values="gross", aggfunc="sum", fill_value=0
-)
-df_reshaped = df_reshaped.sort_values(by="year", ascending=False)
-
-
-# Display the data as a table using `st.dataframe`.
-st.dataframe(
-    df_reshaped,
-    use_container_width=True,
-    column_config={"year": st.column_config.TextColumn("Year")},
-)
-
-# Display the data as an Altair chart using `st.altair_chart`.
-df_chart = pd.melt(
-    df_reshaped.reset_index(), id_vars="year", var_name="genre", value_name="gross"
-)
-chart = (
-    alt.Chart(df_chart)
-    .mark_line()
-    .encode(
-        x=alt.X("year:N", title="Year"),
-        y=alt.Y("gross:Q", title="Gross earnings ($)"),
-        color="genre:N",
-    )
-    .properties(height=320)
-)
-st.altair_chart(chart, use_container_width=True)
